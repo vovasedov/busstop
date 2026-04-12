@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bus Dispatch — Display</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #08080f;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 2rem 2.5rem 0;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 1.5rem;
+      border-bottom: 0.5px solid #ffffff12;
+      margin-bottom: 2rem;
+    }
+
+    .school-name { font-size: 26px; font-weight: 500; letter-spacing: 0.02em; }
+    .school-name span { color: #555; font-weight: 400; }
+
+    #clock {
+      font-size: 30px;
+      font-weight: 400;
+      color: #666;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.04em;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 2rem;
+      flex: 1;
+    }
+
+    .col-header {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding-bottom: 14px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid;
+    }
+
+    .col-waiting  .col-header { color: #555;    border-color: #55555535; }
+    .col-ready    .col-header { color: #22c55e; border-color: #22c55e40; }
+    .col-departed .col-header { color: #333;    border-color: #33333330; }
+
+    .card {
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .col-waiting  .card { background: #ffffff07; border: 0.5px solid #ffffff10; }
+    .col-ready    .card { background: #22c55e0d; border: 0.5px solid #22c55e30; }
+    .col-departed .card { background: #88888806; border: 0.5px solid #88888818; }
+
+    .dot { width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; }
+    .col-departed .dot { opacity: 0.3; }
+
+    .card-info { flex: 1; }
+    .card-name { font-size: 24px; font-weight: 500; }
+    .col-departed .card-name { color: #444; }
+
+    .card-sub { font-size: 13px; margin-top: 4px; }
+    .col-waiting  .card-sub { color: #444; }
+    .col-ready    .card-sub { color: #22c55e80; }
+    .col-departed .card-sub { color: #333; }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: #22c55e;
+      background: #22c55e15;
+      border: 0.5px solid #22c55e35;
+      padding: 5px 12px;
+      border-radius: 20px;
+      animation: breathe 2.5s ease-in-out infinite;
+    }
+    @keyframes breathe { 0%,100%{opacity:1} 50%{opacity:0.55} }
+
+    .empty { color: #2a2a2a; font-size: 15px; padding: 14px 0; }
+
+    /* ── TICKER ── */
+    .ticker-wrap {
+      margin-top: auto;
+      border-top: 0.5px solid #ffffff0a;
+      background: #22c55e08;
+      padding: 0;
+      overflow: hidden;
+      height: 52px;
+      display: flex;
+      align-items: center;
+    }
+
+    .ticker-label {
+      flex-shrink: 0;
+      padding: 0 20px 0 24px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #22c55e;
+      border-right: 0.5px solid #22c55e30;
+      white-space: nowrap;
+      height: 100%;
+      display: flex;
+      align-items: center;
+    }
+
+    .ticker-empty {
+      flex-shrink: 0;
+      padding: 0 24px;
+      font-size: 14px;
+      color: #2e2e2e;
+    }
+
+    .ticker-scroll-wrap {
+      flex: 1;
+      overflow: hidden;
+      height: 100%;
+      display: flex;
+      align-items: center;
+    }
+
+    .ticker-track {
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+      will-change: transform;
+    }
+
+    .ticker-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 32px 0 0;
+      font-size: 17px;
+      font-weight: 500;
+      color: #fff;
+    }
+
+    .ticker-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .ticker-route-tag {
+      font-size: 11px;
+      font-weight: 600;
+      color: #22c55e;
+      background: #22c55e15;
+      border: 0.5px solid #22c55e30;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-right: 4px;
+    }
+
+    footer {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      color: #2e2e2e;
+      font-size: 12px;
+      padding: 10px 0;
+    }
+    .live-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+    #error-bar {
+      display: none;
+      background: #ef444415;
+      border: 0.5px solid #ef444450;
+      color: #ef4444;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="school-name">Bus Dispatch <span>/ Live Board</span></div>
+    <div id="clock">--:--:--</div>
+  </header>
+
+  <div id="error-bar">Connection lost — retrying...</div>
+
+  <div class="grid">
+    <div class="col-waiting">
+      <div class="col-header">Waiting</div>
+      <div id="col-waiting"></div>
+    </div>
+    <div class="col-ready">
+      <div class="col-header">▶ Board Now</div>
+      <div id="col-ready"></div>
+    </div>
+    <div class="col-departed">
+      <div class="col-header">Departed</div>
+      <div id="col-departed"></div>
+    </div>
+  </div>
+
+  <!-- Scrolling name ticker -->
+  <div class="ticker-wrap" id="ticker-wrap">
+    <div class="ticker-label">Boarding now</div>
+    <div class="ticker-scroll-wrap" id="ticker-scroll-wrap">
+      <div class="ticker-empty" id="ticker-empty">No routes ready yet</div>
+      <div class="ticker-track" id="ticker-track"></div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="live-dot"></div>
+    Live — updates instantly
+  </footer>
+
+  <script>
+    // ─── CONFIG — replace with your Supabase project values ─────────────────
+    const SUPABASE_URL      = 'YOUR_SUPABASE_URL';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+    // ────────────────────────────────────────────────────────────────────────
+
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let routes = [];
+    let tickerAnim = null;
+    let tickerPos  = 0;
+
+    // ── Board rendering ──────────────────────────────────────────────────────
+    function renderCol(status) {
+      const el = document.getElementById('col-' + status);
+      const list = routes.filter(r => r.status === status);
+      if (list.length === 0) {
+        el.innerHTML = '<div class="empty">—</div>';
+        return;
+      }
+      el.innerHTML = list.map(r => `
+        <div class="card">
+          <div class="dot" style="background:${r.color}"></div>
+          <div class="card-info">
+            <div class="card-name">${r.name}</div>
+            <div class="card-sub">${r.student_count} students</div>
+          </div>
+          ${status === 'ready' ? '<div class="badge">BOARD</div>' : ''}
+        </div>
+      `).join('');
+    }
+
+    function render() {
+      ['waiting', 'ready', 'departed'].forEach(renderCol);
+      renderTicker();
+    }
+
+    // ── Ticker ───────────────────────────────────────────────────────────────
+    function buildTickerItems() {
+      const ready = routes.filter(r => r.status === 'ready');
+      if (ready.length === 0) return [];
+
+      const items = [];
+      ready.forEach(route => {
+        const names = Array.isArray(route.student_names) ? route.student_names : [];
+        names.forEach(name => {
+          items.push({ name, color: route.color, route: route.name });
+        });
+      });
+      return items;
+    }
+
+    function renderTicker() {
+      const track = document.getElementById('ticker-track');
+      const empty = document.getElementById('ticker-empty');
+      const items = buildTickerItems();
+
+      if (tickerAnim) { cancelAnimationFrame(tickerAnim); tickerAnim = null; }
+      tickerPos = 0;
+      track.style.transform = 'translateX(0px)';
+      track.innerHTML = '';
+
+      if (items.length === 0) {
+        empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none';
+
+      // Duplicate items so scrolling loops seamlessly
+      const allItems = [...items, ...items, ...items];
+      track.innerHTML = allItems.map(item => `
+        <span class="ticker-item">
+          <span class="ticker-dot" style="background:${item.color}"></span>
+          <span class="ticker-route-tag">${item.route}</span>
+          ${item.name}
+        </span>
+      `).join('');
+
+      // Wait for DOM paint, then measure and animate
+      requestAnimationFrame(() => {
+        const singleWidth = track.scrollWidth / 3;
+        const speed = 60; // px per second
+        let last = null;
+
+        function step(ts) {
+          if (!last) last = ts;
+          const dt = (ts - last) / 1000;
+          last = ts;
+          tickerPos += speed * dt;
+          if (tickerPos >= singleWidth) tickerPos -= singleWidth;
+          track.style.transform = `translateX(${-tickerPos}px)`;
+          tickerAnim = requestAnimationFrame(step);
+        }
+        tickerAnim = requestAnimationFrame(step);
+      });
+    }
+
+    // ── Data fetching ────────────────────────────────────────────────────────
+    async function fetchRoutes() {
+      const { data, error } = await db.from('routes').select('*').order('name');
+      if (error) {
+        document.getElementById('error-bar').style.display = 'block';
+        return;
+      }
+      document.getElementById('error-bar').style.display = 'none';
+      routes = data;
+      render();
+    }
+
+    function updateClock() {
+      document.getElementById('clock').textContent =
+        new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    fetchRoutes();
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // ── Supabase Realtime ────────────────────────────────────────────────────
+    db.channel('display-channel')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'routes' }, payload => {
+        routes = routes.map(r => r.id === payload.new.id ? payload.new : r);
+        render();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'routes' }, () => {
+        fetchRoutes();
+      })
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          document.getElementById('error-bar').style.display = 'block';
+        }
+      });
+  </script>
+</body>
+</html>
