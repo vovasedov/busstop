@@ -3,41 +3,95 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bus Dispatch — Display</title>
+  <title>Bus Dispatch — Bruner International School</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet" />
   <style>
+    :root {
+      --navy:   #1b3d8f;
+      --yellow: #f5a623;
+      --coral:  #d63b1f;
+      --white:  #ffffff;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #08080f;
-      color: #fff;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: 'Varela Round', sans-serif;
+      background: var(--navy);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      padding: 2rem 2.5rem 0;
+      overflow: hidden;
+      position: relative;
     }
 
+    /* ── Decorative dots (from brand page) ── */
+    .dots-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .dot { position: absolute; border-radius: 50%; opacity: 0.45; }
+    .dot-1 { width: 320px; height: 320px; background: var(--yellow); top: -100px;   left: -80px; }
+    .dot-2 { width: 160px; height: 160px; background: var(--coral);  top: 200px;    right: 20px; }
+    .dot-3 { width: 100px; height: 100px; background: var(--yellow); bottom: 220px; left: 30px; }
+    .dot-4 { width: 260px; height: 260px; background: var(--coral);  bottom: -80px; right: -60px; }
+    .dot-5 { width:  60px; height:  60px; background: var(--yellow); top: 42%;      left: 4%; }
+    .dot-6 { width:  36px; height:  36px; background: var(--coral);  top: 28%;      right: 6%; }
+
+    /* ── Main layout ── */
+    .main {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      padding: 1.8rem 2.5rem 0;
+      min-height: 0;
+    }
+
+    /* ── Header ── */
     header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-bottom: 1.5rem;
-      border-bottom: 0.5px solid #ffffff12;
-      margin-bottom: 2rem;
+      padding-bottom: 1.4rem;
+      border-bottom: 0.5px solid rgba(255,255,255,0.12);
+      margin-bottom: 1.8rem;
     }
 
-    .school-name { font-size: 26px; font-weight: 500; letter-spacing: 0.02em; }
-    .school-name span { color: #555; font-weight: 400; }
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .brand-name {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--yellow);
+      letter-spacing: 0.04em;
+    }
+    .brand-sub {
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
 
     #clock {
-      font-size: 30px;
-      font-weight: 400;
-      color: #666;
+      font-size: 32px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.25);
       font-variant-numeric: tabular-nums;
       letter-spacing: 0.04em;
     }
 
+    /* ── Grid ── */
     .grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -47,20 +101,20 @@
 
     .col-header {
       font-size: 11px;
-      font-weight: 600;
-      letter-spacing: 0.12em;
+      font-weight: 700;
+      letter-spacing: 0.14em;
       text-transform: uppercase;
       padding-bottom: 14px;
       margin-bottom: 14px;
-      border-bottom: 1px solid;
+      border-bottom: 1.5px solid;
     }
 
-    .col-waiting  .col-header { color: #555;    border-color: #55555535; }
-    .col-ready    .col-header { color: #22c55e; border-color: #22c55e40; }
-    .col-departed .col-header { color: #333;    border-color: #33333330; }
+    .col-waiting  .col-header { color: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.08); }
+    .col-ready    .col-header { color: var(--yellow);           border-color: rgba(245,166,35,0.4); }
+    .col-departed .col-header { color: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.05); }
 
     .card {
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 16px 18px;
       margin-bottom: 12px;
       display: flex;
@@ -68,69 +122,63 @@
       gap: 16px;
     }
 
-    .col-waiting  .card { background: #ffffff07; border: 0.5px solid #ffffff10; }
-    .col-ready    .card { background: #22c55e0d; border: 0.5px solid #22c55e30; }
-    .col-departed .card { background: #88888806; border: 0.5px solid #88888818; }
+    .col-waiting  .card { background: rgba(255,255,255,0.05); border: 0.5px solid rgba(255,255,255,0.08); }
+    .col-ready    .card { background: rgba(245,166,35,0.1);   border: 0.5px solid rgba(245,166,35,0.35); }
+    .col-departed .card { background: rgba(255,255,255,0.02); border: 0.5px solid rgba(255,255,255,0.04); }
 
-    .dot { width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; }
-    .col-departed .dot { opacity: 0.3; }
+    .dot-route { width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; }
+    .col-departed .dot-route { opacity: 0.25; }
 
     .card-info { flex: 1; }
-    .card-name { font-size: 24px; font-weight: 500; }
-    .col-departed .card-name { color: #444; }
+    .card-name { font-size: 24px; font-weight: 700; color: #fff; }
+    .col-departed .card-name { color: rgba(255,255,255,0.2); }
 
-    .card-sub { font-size: 13px; margin-top: 4px; }
-    .col-waiting  .card-sub { color: #444; }
-    .col-ready    .card-sub { color: #22c55e80; }
-    .col-departed .card-sub { color: #333; }
+    .card-sub { font-size: 13px; margin-top: 3px; }
+    .col-waiting  .card-sub { color: rgba(255,255,255,0.25); }
+    .col-ready    .card-sub { color: rgba(245,166,35,0.65); }
+    .col-departed .card-sub { color: rgba(255,255,255,0.1); }
 
     .badge {
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
       letter-spacing: 0.06em;
-      color: #22c55e;
-      background: #22c55e15;
-      border: 0.5px solid #22c55e35;
-      padding: 5px 12px;
+      color: var(--navy);
+      background: var(--yellow);
+      padding: 5px 14px;
       border-radius: 20px;
       animation: breathe 2.5s ease-in-out infinite;
     }
-    @keyframes breathe { 0%,100%{opacity:1} 50%{opacity:0.55} }
+    @keyframes breathe { 0%,100%{opacity:1} 50%{opacity:0.6} }
 
-    .empty { color: #2a2a2a; font-size: 15px; padding: 14px 0; }
+    .empty { color: rgba(255,255,255,0.1); font-size: 15px; padding: 14px 0; }
 
-    /* ── TICKER ── */
+    /* ── Ticker ── */
     .ticker-wrap {
+      position: relative;
+      z-index: 1;
       margin-top: auto;
-      border-top: 0.5px solid #ffffff0a;
-      background: #22c55e08;
-      padding: 0;
-      overflow: hidden;
-      height: 52px;
+      background: rgba(245,166,35,0.08);
+      border-top: 0.5px solid rgba(245,166,35,0.2);
+      height: 56px;
       display: flex;
       align-items: center;
+      overflow: hidden;
+      flex-shrink: 0;
     }
 
     .ticker-label {
       flex-shrink: 0;
-      padding: 0 20px 0 24px;
+      padding: 0 22px 0 26px;
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
       letter-spacing: 0.1em;
       text-transform: uppercase;
-      color: #22c55e;
-      border-right: 0.5px solid #22c55e30;
+      color: var(--yellow);
+      border-right: 0.5px solid rgba(245,166,35,0.3);
       white-space: nowrap;
       height: 100%;
       display: flex;
       align-items: center;
-    }
-
-    .ticker-empty {
-      flex-shrink: 0;
-      padding: 0 24px;
-      font-size: 14px;
-      color: #2e2e2e;
     }
 
     .ticker-scroll-wrap {
@@ -145,95 +193,120 @@
       display: flex;
       align-items: center;
       white-space: nowrap;
-      will-change: transform;
+      /* No transition — position driven by rAF only */
     }
 
     .ticker-item {
       display: inline-flex;
       align-items: center;
       gap: 10px;
-      padding: 0 32px 0 0;
+      padding: 0 36px 0 0;
       font-size: 17px;
-      font-weight: 500;
+      font-weight: 700;
       color: #fff;
     }
 
     .ticker-dot {
-      width: 8px;
-      height: 8px;
+      width: 8px; height: 8px;
       border-radius: 50%;
       flex-shrink: 0;
     }
 
     .ticker-route-tag {
       font-size: 11px;
-      font-weight: 600;
-      color: #22c55e;
-      background: #22c55e15;
-      border: 0.5px solid #22c55e30;
-      padding: 2px 8px;
+      font-weight: 700;
+      color: var(--navy);
+      background: var(--yellow);
+      padding: 2px 9px;
       border-radius: 10px;
-      margin-right: 4px;
     }
 
+    .ticker-empty {
+      padding: 0 26px;
+      font-size: 14px;
+      color: rgba(255,255,255,0.2);
+    }
+
+    /* ── Footer ── */
     footer {
+      position: relative;
+      z-index: 1;
       display: flex;
       justify-content: center;
       align-items: center;
       gap: 8px;
-      color: #2e2e2e;
+      color: rgba(255,255,255,0.15);
       font-size: 12px;
       padding: 10px 0;
     }
     .live-dot {
       width: 6px; height: 6px;
       border-radius: 50%;
-      background: #22c55e;
+      background: var(--yellow);
       animation: pulse 2s infinite;
     }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
 
     #error-bar {
       display: none;
-      background: #ef444415;
-      border: 0.5px solid #ef444450;
-      color: #ef4444;
+      background: rgba(214,59,31,0.15);
+      border: 0.5px solid rgba(214,59,31,0.5);
+      color: var(--coral);
       padding: 10px 18px;
       border-radius: 8px;
       font-size: 13px;
       margin-bottom: 1.5rem;
       text-align: center;
+      position: relative;
+      z-index: 1;
     }
   </style>
 </head>
 <body>
 
-  <header>
-    <div class="school-name">Bus Dispatch <span>/ Live Board</span></div>
-    <div id="clock">--:--:--</div>
-  </header>
-
-  <div id="error-bar">Connection lost — retrying...</div>
-
-  <div class="grid">
-    <div class="col-waiting">
-      <div class="col-header">Waiting</div>
-      <div id="col-waiting"></div>
-    </div>
-    <div class="col-ready">
-      <div class="col-header">▶ Board Now</div>
-      <div id="col-ready"></div>
-    </div>
-    <div class="col-departed">
-      <div class="col-header">Departed</div>
-      <div id="col-departed"></div>
-    </div>
+  <!-- Decorative brand dots -->
+  <div class="dots-layer" aria-hidden="true">
+    <div class="dot dot-1"></div>
+    <div class="dot dot-2"></div>
+    <div class="dot dot-3"></div>
+    <div class="dot dot-4"></div>
+    <div class="dot dot-5"></div>
+    <div class="dot dot-6"></div>
   </div>
 
-  <!-- Scrolling name ticker -->
-  <div class="ticker-wrap" id="ticker-wrap">
+  <div class="main">
+
+    <div id="error-bar">Connection lost — retrying...</div>
+
+    <header>
+      <div class="brand">
+        <div class="brand-name">Bruner International School</div>
+        <div class="brand-sub">Bus Dispatch — Live Board</div>
+      </div>
+      <div id="clock">--:--:--</div>
+    </header>
+
+    <div class="grid">
+      <div class="col-waiting">
+        <div class="col-header">Waiting</div>
+        <div id="col-waiting"></div>
+      </div>
+      <div class="col-ready">
+        <div class="col-header">▶ Board Now</div>
+        <div id="col-ready"></div>
+      </div>
+      <div class="col-departed">
+        <div class="col-header">Departed</div>
+        <div id="col-departed"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Ticker — outside .main so it sticks to the bottom cleanly -->
+  <div class="ticker-wrap">
     <div class="ticker-label">Boarding now</div>
-    <div class="ticker-scroll-wrap" id="ticker-scroll-wrap">
+    <div class="ticker-scroll-wrap">
       <div class="ticker-empty" id="ticker-empty">No routes ready yet</div>
       <div class="ticker-track" id="ticker-track"></div>
     </div>
@@ -245,30 +318,24 @@
   </footer>
 
   <script>
-    // ─── CONFIG — replace with your Supabase project values ─────────────────
-    const SUPABASE_URL      = 'https://zbdayfxnnmwsralndfzm.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiZGF5Znhubm13c3JhbG5kZnptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMDk5OTgsImV4cCI6MjA5MTU4NTk5OH0.y3zMnBs3GrDqA901Rj52wd7VgFFsYbyeRNldJYBw08E';
-    // ────────────────────────────────────────────────────────────────────────
+    // ─── CONFIG ───────────────────────────────────────────────────────────────
+    const SUPABASE_URL      = 'YOUR_SUPABASE_URL';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+    // ─────────────────────────────────────────────────────────────────────────
 
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  
     let routes = [];
-    let tickerAnim = null;
-    let tickerPos  = 0;
 
-    // ── Board rendering ──────────────────────────────────────────────────────
+    // ── Board ─────────────────────────────────────────────────────────────────
     function renderCol(status) {
       const el = document.getElementById('col-' + status);
       const list = routes.filter(r => r.status === status);
-      if (list.length === 0) {
-        el.innerHTML = '<div class="empty">—</div>';
-        return;
-      }
+      if (!list.length) { el.innerHTML = '<div class="empty">—</div>'; return; }
       el.innerHTML = list.map(r => `
         <div class="card">
-          <div class="dot" style="background:${r.color}"></div>
+          <div class="dot-route" style="background:${r.color}"></div>
           <div class="card-info">
             <div class="card-name">${r.name}</div>
             <div class="card-sub">${r.student_count} students</div>
@@ -279,44 +346,49 @@
     }
 
     function render() {
-      ['waiting', 'ready', 'departed'].forEach(renderCol);
-      renderTicker();
+      ['waiting','ready','departed'].forEach(renderCol);
     }
 
-    // ── Ticker ───────────────────────────────────────────────────────────────
-    function buildTickerItems() {
+    // ── Ticker — speed never resets, only content updates ────────────────────
+    const SPEED = 70; // px per second — change here if needed
+
+    const track   = document.getElementById('ticker-track');
+    const empty   = document.getElementById('ticker-empty');
+    let animId    = null;
+    let pos       = 0;           // current scroll position in px
+    let loopWidth = 0;           // width of one full set of items
+    let lastTs    = null;
+
+    function step(ts) {
+      if (lastTs === null) lastTs = ts;
+      const dt = (ts - lastTs) / 1000;
+      lastTs = ts;
+      if (loopWidth > 0) {
+        pos += SPEED * dt;
+        if (pos >= loopWidth) pos -= loopWidth;
+        track.style.transform = `translateX(${-pos}px)`;
+      }
+      animId = requestAnimationFrame(step);
+    }
+
+    function buildTickerContent() {
       const ready = routes.filter(r => r.status === 'ready');
-      if (ready.length === 0) return [];
-
-      const items = [];
-      ready.forEach(route => {
-        const names = Array.isArray(route.student_names) ? route.student_names : [];
-        names.forEach(name => {
-          items.push({ name, color: route.color, route: route.name });
-        });
-      });
-      return items;
-    }
-
-    function renderTicker() {
-      const track = document.getElementById('ticker-track');
-      const empty = document.getElementById('ticker-empty');
-      const items = buildTickerItems();
-
-      if (tickerAnim) { cancelAnimationFrame(tickerAnim); tickerAnim = null; }
-      tickerPos = 0;
-      track.style.transform = 'translateX(0px)';
-      track.innerHTML = '';
-
-      if (items.length === 0) {
+      if (!ready.length) {
         empty.style.display = 'block';
+        track.innerHTML = '';
+        loopWidth = 0;
         return;
       }
       empty.style.display = 'none';
 
-      // Duplicate items so scrolling loops seamlessly
-      const allItems = [...items, ...items, ...items];
-      track.innerHTML = allItems.map(item => `
+      const items = [];
+      ready.forEach(r => {
+        const names = Array.isArray(r.student_names) ? r.student_names : [];
+        names.forEach(name => items.push({ name, color: r.color, route: r.name }));
+      });
+
+      // Triple the items so there's always content to scroll through
+      const html = [...items, ...items, ...items].map(item => `
         <span class="ticker-item">
           <span class="ticker-dot" style="background:${item.color}"></span>
           <span class="ticker-route-tag">${item.route}</span>
@@ -324,59 +396,50 @@
         </span>
       `).join('');
 
-      // Wait for DOM paint, then measure and animate
-      requestAnimationFrame(() => {
-        const singleWidth = track.scrollWidth / 3;
-        const speed = 60; // px per second
-        let last = null;
+      track.innerHTML = html;
 
-        function step(ts) {
-          if (!last) last = ts;
-          const dt = (ts - last) / 1000;
-          last = ts;
-          tickerPos += speed * dt;
-          if (tickerPos >= singleWidth) tickerPos -= singleWidth;
-          track.style.transform = `translateX(${-tickerPos}px)`;
-          tickerAnim = requestAnimationFrame(step);
-        }
-        tickerAnim = requestAnimationFrame(step);
+      // Measure after paint — pos is preserved, only loopWidth updates
+      requestAnimationFrame(() => {
+        loopWidth = track.scrollWidth / 3;
+        // Keep pos within the new loop width to avoid a jump
+        if (loopWidth > 0) pos = pos % loopWidth;
       });
     }
 
-    // ── Data fetching ────────────────────────────────────────────────────────
+    // Start the animation loop once, never stop it
+    animId = requestAnimationFrame(step);
+
+    // ── Data ──────────────────────────────────────────────────────────────────
     async function fetchRoutes() {
       const { data, error } = await db.from('routes').select('*').order('name');
-      if (error) {
-        document.getElementById('error-bar').style.display = 'block';
-        return;
-      }
+      if (error) { document.getElementById('error-bar').style.display = 'block'; return; }
       document.getElementById('error-bar').style.display = 'none';
       routes = data;
       render();
+      buildTickerContent();
     }
 
     function updateClock() {
       document.getElementById('clock').textContent =
-        new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
     }
 
     fetchRoutes();
     updateClock();
     setInterval(updateClock, 1000);
 
-    // ── Supabase Realtime ────────────────────────────────────────────────────
+    // ── Realtime ──────────────────────────────────────────────────────────────
     db.channel('display-channel')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'routes' }, payload => {
         routes = routes.map(r => r.id === payload.new.id ? payload.new : r);
         render();
+        buildTickerContent(); // pos is NOT reset — speed stays constant
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'routes' }, () => {
         fetchRoutes();
       })
-      .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR') {
-          document.getElementById('error-bar').style.display = 'block';
-        }
+      .subscribe(status => {
+        if (status === 'CHANNEL_ERROR') document.getElementById('error-bar').style.display = 'block';
       });
   </script>
 </body>
