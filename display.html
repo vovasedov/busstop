@@ -28,7 +28,7 @@
       position: relative;
     }
 
-    /* ── Decorative dots (from brand page) ── */
+    /* ── Decorative dots ── */
     .dots-layer {
       position: fixed;
       inset: 0;
@@ -65,23 +65,9 @@
       margin-bottom: 1.8rem;
     }
 
-    .brand {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .brand-name {
-      font-size: 20px;
-      font-weight: 700;
-      color: var(--yellow);
-      letter-spacing: 0.04em;
-    }
-    .brand-sub {
-      font-size: 12px;
-      color: rgba(255,255,255,0.4);
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
+    .brand { display: flex; flex-direction: column; gap: 2px; }
+    .brand-name { font-size: 20px; font-weight: 700; color: var(--yellow); letter-spacing: 0.04em; }
+    .brand-sub  { font-size: 12px; color: rgba(255,255,255,0.4); letter-spacing: 0.06em; text-transform: uppercase; }
 
     #clock {
       font-size: 32px;
@@ -90,6 +76,25 @@
       font-variant-numeric: tabular-nums;
       letter-spacing: 0.04em;
     }
+
+    /* ── Status bar ── */
+    #status-bar {
+      position: fixed;
+      top: 12px;
+      right: 50%;
+      transform: translateX(50%);
+      z-index: 10;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 16px;
+      border-radius: 20px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      transition: opacity 0.4s;
+    }
+    #status-bar.connected    { background: rgba(245,166,35,0.15); color: var(--yellow); border: 0.5px solid rgba(245,166,35,0.3); }
+    #status-bar.disconnected { background: rgba(214,59,31,0.2);   color: var(--coral);  border: 0.5px solid rgba(214,59,31,0.4); }
+    #status-bar.polling      { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.35); border: 0.5px solid rgba(255,255,255,0.1); }
 
     /* ── Grid ── */
     .grid {
@@ -193,7 +198,6 @@
       display: flex;
       align-items: center;
       white-space: nowrap;
-      /* No transition — position driven by rAF only */
     }
 
     .ticker-item {
@@ -206,11 +210,7 @@
       color: #fff;
     }
 
-    .ticker-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
+    .ticker-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
     .ticker-route-tag {
       font-size: 11px;
@@ -221,11 +221,7 @@
       border-radius: 10px;
     }
 
-    .ticker-empty {
-      padding: 0 26px;
-      font-size: 14px;
-      color: rgba(255,255,255,0.2);
-    }
+    .ticker-empty { padding: 0 26px; font-size: 14px; color: rgba(255,255,255,0.2); }
 
     /* ── Footer ── */
     footer {
@@ -246,25 +242,10 @@
       animation: pulse 2s infinite;
     }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
-
-    #error-bar {
-      display: none;
-      background: rgba(214,59,31,0.15);
-      border: 0.5px solid rgba(214,59,31,0.5);
-      color: var(--coral);
-      padding: 10px 18px;
-      border-radius: 8px;
-      font-size: 13px;
-      margin-bottom: 1.5rem;
-      text-align: center;
-      position: relative;
-      z-index: 1;
-    }
   </style>
 </head>
 <body>
 
-  <!-- Decorative brand dots -->
   <div class="dots-layer" aria-hidden="true">
     <div class="dot dot-1"></div>
     <div class="dot dot-2"></div>
@@ -274,10 +255,9 @@
     <div class="dot dot-6"></div>
   </div>
 
+  <div id="status-bar" class="polling">Connecting...</div>
+
   <div class="main">
-
-    <div id="error-bar">Connection lost — retrying...</div>
-
     <header>
       <div class="brand">
         <div class="brand-name">Bruner International School</div>
@@ -300,10 +280,8 @@
         <div id="col-departed"></div>
       </div>
     </div>
-
   </div>
 
-  <!-- Ticker — outside .main so it sticks to the bottom cleanly -->
   <div class="ticker-wrap">
     <div class="ticker-label">Boarding now</div>
     <div class="ticker-scroll-wrap">
@@ -319,16 +297,67 @@
 
   <script>
     // ─── CONFIG ───────────────────────────────────────────────────────────────
-     const SUPABASE_URL      = 'https://zbdayfxnnmwsralndfzm.supabase.co';
+     // ─── CONFIG ───────────────────────────────────────────────────────────────
+    const SUPABASE_URL      = 'https://zbdayfxnnmwsralndfzm.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpiZGF5Znhubm13c3JhbG5kZnptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMDk5OTgsImV4cCI6MjA5MTU4NTk5OH0.y3zMnBs3GrDqA901Rj52wd7VgFFsYbyeRNldJYBw08E';
     // ─────────────────────────────────────────────────────────────────────────
 
     const { createClient } = supabase;
     const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    let routes = [];
+    let routes   = [];
+    let pos      = 0;
+    let loopWidth = 0;
+    let lastTs   = null;
+    const SPEED  = 70; // px/s
 
-    // ── Board ─────────────────────────────────────────────────────────────────
+    // ── Ticker animation loop — runs forever, never resets ───────────────────
+    const track = document.getElementById('ticker-track');
+    const empty = document.getElementById('ticker-empty');
+
+    function tickerStep(ts) {
+      if (lastTs === null) lastTs = ts;
+      const dt = (ts - lastTs) / 1000;
+      lastTs = ts;
+      if (loopWidth > 0) {
+        pos += SPEED * dt;
+        if (pos >= loopWidth) pos -= loopWidth;
+        track.style.transform = `translateX(${-pos}px)`;
+      }
+      requestAnimationFrame(tickerStep);
+    }
+    requestAnimationFrame(tickerStep);
+
+    function buildTickerContent() {
+      const ready = routes.filter(r => r.status === 'ready');
+      if (!ready.length) {
+        empty.style.display = 'block';
+        track.innerHTML = '';
+        loopWidth = 0;
+        return;
+      }
+      empty.style.display = 'none';
+      const items = [];
+      ready.forEach(r => {
+        (Array.isArray(r.student_names) ? r.student_names : []).forEach(name => {
+          items.push({ name, color: r.color, route: r.name });
+        });
+      });
+      track.innerHTML = [...items, ...items, ...items].map(i => `
+        <span class="ticker-item">
+          <span class="ticker-dot" style="background:${i.color}"></span>
+          <span class="ticker-route-tag">${i.route}</span>
+          ${i.name}
+        </span>
+      `).join('');
+      // Measure after paint — pos is preserved, no speed change
+      requestAnimationFrame(() => {
+        loopWidth = track.scrollWidth / 3;
+        if (loopWidth > 0) pos = pos % loopWidth;
+      });
+    }
+
+    // ── Board rendering ───────────────────────────────────────────────────────
     function renderCol(status) {
       const el = document.getElementById('col-' + status);
       const list = routes.filter(r => r.status === status);
@@ -347,76 +376,26 @@
 
     function render() {
       ['waiting','ready','departed'].forEach(renderCol);
+      buildTickerContent();
     }
 
-    // ── Ticker — speed never resets, only content updates ────────────────────
-    const SPEED = 70; // px per second — change here if needed
-
-    const track   = document.getElementById('ticker-track');
-    const empty   = document.getElementById('ticker-empty');
-    let animId    = null;
-    let pos       = 0;           // current scroll position in px
-    let loopWidth = 0;           // width of one full set of items
-    let lastTs    = null;
-
-    function step(ts) {
-      if (lastTs === null) lastTs = ts;
-      const dt = (ts - lastTs) / 1000;
-      lastTs = ts;
-      if (loopWidth > 0) {
-        pos += SPEED * dt;
-        if (pos >= loopWidth) pos -= loopWidth;
-        track.style.transform = `translateX(${-pos}px)`;
-      }
-      animId = requestAnimationFrame(step);
+    // ── Status indicator ──────────────────────────────────────────────────────
+    const statusBar = document.getElementById('status-bar');
+    function setStatus(state) {
+      statusBar.className = state;
+      statusBar.textContent = {
+        connected:    '● Live',
+        disconnected: '● Reconnecting...',
+        polling:      '● Connecting...',
+      }[state];
     }
 
-    function buildTickerContent() {
-      const ready = routes.filter(r => r.status === 'ready');
-      if (!ready.length) {
-        empty.style.display = 'block';
-        track.innerHTML = '';
-        loopWidth = 0;
-        return;
-      }
-      empty.style.display = 'none';
-
-      const items = [];
-      ready.forEach(r => {
-        const names = Array.isArray(r.student_names) ? r.student_names : [];
-        names.forEach(name => items.push({ name, color: r.color, route: r.name }));
-      });
-
-      // Triple the items so there's always content to scroll through
-      const html = [...items, ...items, ...items].map(item => `
-        <span class="ticker-item">
-          <span class="ticker-dot" style="background:${item.color}"></span>
-          <span class="ticker-route-tag">${item.route}</span>
-          ${item.name}
-        </span>
-      `).join('');
-
-      track.innerHTML = html;
-
-      // Measure after paint — pos is preserved, only loopWidth updates
-      requestAnimationFrame(() => {
-        loopWidth = track.scrollWidth / 3;
-        // Keep pos within the new loop width to avoid a jump
-        if (loopWidth > 0) pos = pos % loopWidth;
-      });
-    }
-
-    // Start the animation loop once, never stop it
-    animId = requestAnimationFrame(step);
-
-    // ── Data ──────────────────────────────────────────────────────────────────
+    // ── Data fetch ────────────────────────────────────────────────────────────
     async function fetchRoutes() {
       const { data, error } = await db.from('routes').select('*').order('name');
-      if (error) { document.getElementById('error-bar').style.display = 'block'; return; }
-      document.getElementById('error-bar').style.display = 'none';
+      if (error) { setStatus('disconnected'); return; }
       routes = data;
       render();
-      buildTickerContent();
     }
 
     function updateClock() {
@@ -424,22 +403,28 @@
         new Date().toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
     }
 
+    // Initial load
     fetchRoutes();
     updateClock();
     setInterval(updateClock, 1000);
 
-    // ── Realtime ──────────────────────────────────────────────────────────────
-    db.channel('display-channel')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'routes' }, payload => {
-        routes = routes.map(r => r.id === payload.new.id ? payload.new : r);
-        render();
-        buildTickerContent(); // pos is NOT reset — speed stays constant
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'routes' }, () => {
-        fetchRoutes();
-      })
+    // Fallback poll every 10 seconds — keeps display fresh even if Realtime drops
+    setInterval(fetchRoutes, 10000);
+
+    // ── Supabase Realtime — single listener for all changes ───────────────────
+    db.channel('routes-display')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'routes' },
+        () => {
+          // Always do a full fetch on any change — simple and reliable
+          fetchRoutes();
+        }
+      )
       .subscribe(status => {
-        if (status === 'CHANNEL_ERROR') document.getElementById('error-bar').style.display = 'block';
+        if (status === 'SUBSCRIBED')   setStatus('connected');
+        if (status === 'CLOSED')       setStatus('disconnected');
+        if (status === 'CHANNEL_ERROR') setStatus('disconnected');
       });
   </script>
 </body>
